@@ -100,7 +100,9 @@ int main(int argc, char *argv[]){
 
         MPI_Barrier(MPI_COMM_WORLD);
         time_w1=MPI_Wtime();
+
         gaussInvert(a, b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, blocks_order);
+        
         MPI_Barrier(MPI_COMM_WORLD);
         time_w2=MPI_Wtime();
         
@@ -128,6 +130,8 @@ int main(int argc, char *argv[]){
       	delete[] b;
 
         delete[] blocks_order_reversed;
+        delete[] blocks_order;
+
     	MPI_Finalize();
     	return 0;
 }
