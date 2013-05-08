@@ -25,4 +25,4 @@ int initParameters(int matrix_side, int block_side, int total_pr, int current_pr
 	int *small_block_row_width, int *small_block_size,
 	int *current_pr_full_rows, int *last_block_row_width,
 	int *matrix_size_current_pr);
-void MPI_printUpperLeftBlock(double *a, int matrix_side, int block_side, int total_pr, int current_pr, const int *blocks_order_reversed);
+void MPI_printUpperLeftBlock(double *a, int matrix_side, int block_side, int total_pr, int current_pr, const int *blocks_order_reversed, double*, double*);

@@ -2,7 +2,10 @@
 #include "io.h"
 #include <mpi.h>
 
-int gaussInvert(double *a, double *b, int matrix_side, int block_side, int total_pr, int current_pr, int* blocks_order_reversed, int* blocks_order){
+int gaussInvert(double *a, double *b, int matrix_side, int block_side, 
+  int total_pr, int current_pr, 
+  int* blocks_order_reversed, int* blocks_order,
+  double* buf_1, double* buf_2, double* buf_string, double* buf_string_2){
   MPI_Status status;
 
   int first_row, first_row_proc_id, last_row_c;
@@ -20,15 +23,10 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side, int total
 	&current_pr_full_rows, &last_block_row_width,
 	&matrix_size_current_pr);
 
-	int buf_size = 2*block_string_size;
-
-	double *buf_1 = new double[block_size];
-  double *buf_2 = new double[block_size];
- 	double *buf_string = new double[buf_size];
- 	double *buf_string_2 = new double[buf_size];
-
   int i, j, k, min_j, min_k, min_k_global;
   int label_main_local, label_main_global, res;
+
+  int buf_size = 2 * block_string_size;
 
 	double temp=-1.;
 
@@ -88,6 +86,7 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side, int total
 #endif
 
 			MPI_Allreduce(&label_main_local, &label_main_global, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+      //actually, I should write a new function. 3 synchronizations -> 1 synchronization; profit.
 
 			if (label_main_global==0){
 				if (current_pr==0){
@@ -96,10 +95,6 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side, int total
 				fflush(stdout);
 			
 				MPI_Barrier(MPI_COMM_WORLD);
-    		delete[] buf_1;
-    		delete[] buf_2;
-	    	delete[] buf_string;
-      	delete[] buf_string_2;
 				return -1;
 			}
 
@@ -313,11 +308,6 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side, int total
         	fflush(stdout);
     	}
 #endif
-
-    delete[] buf_1;
-   	delete[] buf_2;
-   	delete[] buf_string;
-   	delete[] buf_string_2;
 	
 	if (current_pr==0){
 		printf("Exit from gauss\n");

@@ -10,6 +10,10 @@ int main(int argc, char *argv[]){
         double *b=0;
         int *blocks_order_reversed = 0;
         int *blocks_order = 0;
+        double *buf_1 = 0;
+        double *buf_2 = 0;
+        double *buf_string = 0;
+        double *buf_string_2 = 0;
 
         double time_w1=0.;
         double time_w2=0.;
@@ -65,6 +69,13 @@ int main(int argc, char *argv[]){
 
         blocks_order_reversed = new int[total_block_rows];
         blocks_order = new int[total_block_rows];
+
+        buf_1 = new double[block_size];
+        buf_2 = new double[block_size];
+
+        buf_string = new double[2*block_string_size];
+        buf_string_2 = new double[2*block_string_size];
+
         for (i = 0; i < total_block_rows; i++)
         {
             blocks_order_reversed[i]=i;
@@ -95,18 +106,21 @@ int main(int argc, char *argv[]){
     	makeBlockMatrix_Rows(a, matrix_side, block_side, total_pr, current_pr);
     	makeBlockMatrix_Rows(b, matrix_side, block_side, total_pr, current_pr);
     	
-        MPI_printUpperLeftBlock(a, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed);
-        MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed);
+        MPI_printUpperLeftBlock(a, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
+        MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
 
         MPI_Barrier(MPI_COMM_WORLD);
         time_w1=MPI_Wtime();
 
-        gaussInvert(a, b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, blocks_order);
+        gaussInvert(a, b, 
+            matrix_side, block_side, total_pr, current_pr, 
+            blocks_order_reversed, blocks_order, 
+            buf_1, buf_2, buf_string, buf_string_2);
         
         MPI_Barrier(MPI_COMM_WORLD);
         time_w2=MPI_Wtime();
         
-        MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed);
+        MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
         
         if(init_method==1){
             initMatrixByColumns(a, matrix_side, block_side, total_pr, current_pr);
@@ -131,6 +145,11 @@ int main(int argc, char *argv[]){
 
         delete[] blocks_order_reversed;
         delete[] blocks_order;
+
+        delete[] buf_1;
+        delete[] buf_2;
+        delete[] buf_string;
+        delete[] buf_string_2;
 
     	MPI_Finalize();
     	return 0;

@@ -209,6 +209,7 @@ double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side,
 	temp_block = new double[block_size];
 	temp_block_for_multiplication = new double[block_size];
 	buf = new double[matrix_size_current_pr];
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	blocks_order = new int[total_block_rows];
 	for(i=0; i<total_block_rows;i++){
 		blocks_order[i]=blocks_order_reversed[blocks_order_reversed[i]];
@@ -295,12 +296,12 @@ double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side,
 			local_residual = temp_vect[i];
 		}
 	}
-	
+#ifdef RESIDAL_PRINT	
 	for(i=0;i<current_pr_rows;i++){
 		pos_j = current_pr*block_side + (i/block_side)*total_pr*block_side + i%block_side;
 		printf("%d row %.3le residual\n", pos_j, temp_vect[i]);
 	}
-
+#endif
     MPI_Allreduce(&local_residual, &residual, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 	
 	delete[] temp_vect;
@@ -346,7 +347,13 @@ int initParameters(int matrix_side, int block_side, int total_pr, int current_pr
 }
 
 
-void MPI_printUpperLeftBlock(double *a, int matrix_side, int block_side, int total_pr, int current_pr, const int *blocks_order_reversed){
+void MPI_printUpperLeftBlock(double *a, int matrix_side, int block_side, int total_pr, int current_pr, const int *blocks_order_reversed, 
+	double *buf_string, double *buf_string_2){
+
+	double *buf = 0;
+	double *recvbuf = 0;
+	double *sendbuf = 0;
+
 	int corner_side = 7;
 	MPI_Status status;
 	int i, j, real_i;
@@ -364,19 +371,17 @@ void MPI_printUpperLeftBlock(double *a, int matrix_side, int block_side, int tot
 	&current_pr_full_rows, &last_block_row_width,
 	&matrix_size_current_pr);
 
+	buf = buf_string;
+	recvbuf = buf_string_2;
+	sendbuf = buf_string_2 + block_string_size;
+
 	if (matrix_side<corner_side){
 		corner_side = matrix_side;
 	}
 
 	int corner_total_block_rows = (corner_side + block_side - 1)/block_side;
-	int current_pr_block_rows = (corner_total_block_rows + total_pr - 1)/total_pr;
-	int sendbuf_size = corner_side*block_side;
-	int buf_size = current_pr_block_rows * sendbuf_size;
-	
-	buf_size = block_string_size*corner_total_block_rows;
-	double* recvbuf = new double[block_string_size];
-	double* sendbuf = new double[block_string_size];
-	double* buf = new double[buf_size];
+	//int current_pr_block_rows = (corner_total_block_rows + total_pr - 1)/total_pr;
+	//int sendbuf_size = corner_side*block_side;
 
 	for(i = 0; i < corner_total_block_rows; i++){
 		real_i = blocks_order_reversed[i];
@@ -407,7 +412,4 @@ void MPI_printUpperLeftBlock(double *a, int matrix_side, int block_side, int tot
 	if(current_pr==0){
 		printUpperLeftBlock(buf, matrix_side, block_side);
 	}
-	delete[] buf;
-	delete[] sendbuf;
-	delete[] recvbuf;
 }
