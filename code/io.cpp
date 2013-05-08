@@ -176,7 +176,8 @@ int initMatrixByColumns(double *a, int n, int m, int p, int k){
     return 0;
 }
 
-double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side, int block_side, int total_pr, int current_pr, const int *blocks_order_reversed){
+double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side, int block_side, int total_pr, int current_pr, const int *blocks_order_reversed,
+	double *buf_string, double *buf_1, double *buf_2){
 	double residual = -1.;
 	double local_residual = -1.;
 
@@ -205,9 +206,12 @@ double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side,
 	if ((small_block_row_width)&&(current_pr==last_block_row_proc_id)){
 		current_pr_rows += small_block_row_width;
 	}
-	temp_vect = new double[max_rows_pp];
-	temp_block = new double[block_size];
-	temp_block_for_multiplication = new double[block_size];
+
+	temp_vect = buf_string;
+	//careful here
+	temp_block = buf_1;
+	temp_block_for_multiplication = buf_2;
+
 	buf = new double[matrix_size_current_pr];
 	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	blocks_order = new int[total_block_rows];
@@ -304,13 +308,7 @@ double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side,
 #endif
     MPI_Allreduce(&local_residual, &residual, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 	
-	//delete[] temp_vect;
-	//delete[] temp_block;
-	//delete[] temp_block_for_multiplication;
-	//delete[] buf;
-
-	//delete[] blocks_order;
-
+	delete[] buf;
 	return residual;
 }
 
@@ -371,7 +369,8 @@ void MPI_printUpperLeftBlock(double *a, int matrix_side, int block_side, int tot
 	&current_pr_full_rows, &last_block_row_width,
 	&matrix_size_current_pr);
 
-	buf = new double[corner_side*corner_side]; 
+	buf = new double[corner_side*block_string_size]; 
+
 	recvbuf = buf_string;
 	sendbuf = buf_string_2;
 

@@ -108,8 +108,6 @@ int main(int argc, char *argv[]){
     	
         MPI_printUpperLeftBlock(a, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
         MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
-
-        MPI_Barrier(MPI_COMM_WORLD);
         time_w1=MPI_Wtime();
 
         gaussInvert(a, b, 
@@ -121,7 +119,7 @@ int main(int argc, char *argv[]){
         time_w2=MPI_Wtime();
         
         MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
-        
+        MPI_Barrier(MPI_COMM_WORLD);
         if(init_method==1){
             initMatrixByColumns(a, matrix_side, block_side, total_pr, current_pr);
         }
@@ -131,9 +129,9 @@ int main(int argc, char *argv[]){
         
         makeBlockMatrix_Columns(a, matrix_side, block_side, total_pr, current_pr);
 
-        residual = MPI_getResidual(a, b, matrix_side, block_side, total_pr, current_pr, blocks_order);
+        residual = MPI_getResidual(a, b, matrix_side, block_side, total_pr, current_pr, blocks_order, buf_string, buf_1, buf_2);
+        
         if(current_pr==0){
-            
             printf("Residual: %.3le\n", residual);
             printf("Time elapsed: %.3le\n", time_w2-time_w1);
             fflush(stdout);
