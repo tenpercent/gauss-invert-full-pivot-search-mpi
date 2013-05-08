@@ -138,6 +138,7 @@ int main(int argc, char *argv[]){
             printf("Time elapsed: %.3le\n", time_w2-time_w1);
             fflush(stdout);
         }
+
         MPI_Barrier(MPI_COMM_WORLD);
 
       	delete[] a;
