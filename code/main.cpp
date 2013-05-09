@@ -1,9 +1,13 @@
 #include <cstdlib>
 #include <unistd.h>
+#include <stddef.h>
 #include "mpi.h"
 #include "io.h"
 #include "tools.h"
 #include "gauss-invert.h"
+
+MPI_Op MPI_searchMainBlock;
+MPI_Datatype MPI_mainBlockInfo;
 using namespace std;
 int main(int argc, char *argv[]){
         double *a=0;
@@ -108,6 +112,23 @@ int main(int argc, char *argv[]){
     	
         MPI_printUpperLeftBlock(a, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
         MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
+
+        MPI_Datatype type[4] = { MPI_INT, MPI_INT, MPI_INT, MPI_DOUBLE };
+
+        int blocklen[4] = { 1, 1, 1 };
+
+        MPI_Aint displ[4] = { 0, 0, 0, 0 };
+
+        displ[0] = offsetof(mainBlockInfo, label);
+        displ[1] = offsetof(mainBlockInfo, min_k);
+        displ[2] = offsetof(mainBlockInfo, rank);
+        displ[3] = offsetof(mainBlockInfo, minnorm);
+
+        MPI_Type_create_struct(4, blocklen, displ, type, &MPI_mainBlockInfo);
+
+        MPI_Type_commit(&MPI_mainBlockInfo);
+
+        MPI_Op_create(searchMainBlock, 1, &MPI_searchMainBlock);
         time_w1=MPI_Wtime();
 
         gaussInvert(a, b, 
@@ -117,6 +138,9 @@ int main(int argc, char *argv[]){
         
         MPI_Barrier(MPI_COMM_WORLD);
         time_w2=MPI_Wtime();
+
+        MPI_Type_free(&MPI_mainBlockInfo);
+        MPI_Op_free(&MPI_searchMainBlock);
         
         MPI_printUpperLeftBlock(b, matrix_side, block_side, total_pr, current_pr, blocks_order_reversed, buf_string, buf_string_2);
         MPI_Barrier(MPI_COMM_WORLD);

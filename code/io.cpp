@@ -1,6 +1,5 @@
 #include <cmath>
 #include <cstdio>
-#include <mpi.h>
 #include "tools.h"
 #include "io.h"
 double f (int i,int j){
@@ -10,6 +9,28 @@ double f (int i,int j){
 double identity (int i, int j){
     if (i==j) return 1.;
     else return 0.;
+}
+void searchMainBlock(void *inv, void *inoutv, int *len, MPI_Datatype *MPI_mainBlockInfo){
+  mainBlockInfo *in = (mainBlockInfo *) inv;
+  mainBlockInfo *inout = (mainBlockInfo *) inoutv;
+  int i;
+  for (i=0; i<*len; ++i){
+    if(in->label){
+      if(inout->label){
+        if(in->minnorm<inout->minnorm){
+          inout->minnorm = in->minnorm;
+          inout->rank = in->rank;
+          inout->min_k = in->min_k;
+        }
+      }
+      else{
+        inout->minnorm = in->minnorm;
+        inout->rank = in->rank;
+        inout->min_k = in->min_k;
+      }
+    }
+    inout->label += in->label;
+  }
 }
 int readMatrixByRows(const char* name, double *a, int matrix_side, int block_side, int total_pr, int current_pr){
    	FILE *fp = 0;

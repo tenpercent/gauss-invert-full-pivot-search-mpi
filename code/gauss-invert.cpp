@@ -1,40 +1,8 @@
 #include "tools.h"
 #include "io.h"
-#include <mpi.h>
 #include <stddef.h>
-
-typedef struct {
-    int label;
-    int min_k;
-    int rank;
-    double minnorm;
-} mainBlockInfo;
-
-void searchMainBlock(void *inv, void *inoutv, int *len, MPI_Datatype *MPI_mainBlockInfo){
-  mainBlockInfo *in = (mainBlockInfo *) inv;
-  mainBlockInfo *inout = (mainBlockInfo *) inoutv;
-  int i;
-  for (i=0; i<*len; ++i){
-    if(in->label){
-      if(inout->label){
-        if(in->minnorm<inout->minnorm){
-          inout->minnorm = in->minnorm;
-          inout->rank = in->rank;
-          inout->min_k = in->min_k;
-        }
-      }
-      else{
-        inout->minnorm = in->minnorm;
-        inout->rank = in->rank;
-        inout->min_k = in->min_k;
-      }
-    }
-      inout->label += in->label;
-     // in++; 
-     // inout++;
-  }
-}
-
+extern MPI_Op MPI_searchMainBlock;
+extern MPI_Datatype MPI_mainBlockInfo;
 int gaussInvert(double *a, double *b, int matrix_side, int block_side, 
   int total_pr, int current_pr, 
   int* blocks_order_reversed, int* blocks_order,
@@ -63,35 +31,10 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
 
 	double temp=-1.;
 
-  struct MPI_Double_Int{
-   	double minnorm;
-   	int rank;
- 	};
-
   mainBlockInfo in, out;
 
-  MPI_Op MPI_searchMainBlock;
-  MPI_Datatype MPI_mainBlockInfo;
-
-  MPI_Datatype type[4] = { MPI_INT, MPI_INT, MPI_INT, MPI_DOUBLE };
-
-  int blocklen[4] = { 1, 1, 1 };
-
-  MPI_Aint displ[4] = { 0, 0, 0, 0 };
-
-  displ[0] = offsetof(mainBlockInfo, label);
-  displ[1] = offsetof(mainBlockInfo, min_k);
-  displ[2] = offsetof(mainBlockInfo, rank);
-  displ[3] = offsetof(mainBlockInfo, minnorm);
-
-  MPI_Type_create_struct(4, blocklen, displ, type, &MPI_mainBlockInfo);
-
-  MPI_Type_commit(&MPI_mainBlockInfo);
-
-  MPI_Op_create(searchMainBlock, 1, &MPI_searchMainBlock);
-
  	in.rank = current_pr;
-	in.minnorm = 1000000000.;
+	in.minnorm = 0.;
   in.label = 0;
   in.min_k = 0;
 
@@ -350,9 +293,6 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
     fflush(stdout);
   }
 #endif
-  
-  MPI_Type_free(&MPI_mainBlockInfo);
-  MPI_Op_free(&MPI_searchMainBlock);
 	return 0;
 }
 

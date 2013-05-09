@@ -1,7 +1,17 @@
+#include <mpi.h>
 #define SAY_HI printf("Hi from process %d of total %d processes\n", current_pr, total_pr);
 //#define WO_PIVOT_SEARCH_ATALL
 #define W_REVERSE_FLOW
 #define W_FULL_PIVOT_SEARCH
+
+typedef struct {
+    int label;
+    int min_k;
+    int rank;
+    double minnorm;
+} mainBlockInfo;
+
+void searchMainBlock(void *inv, void *inoutv, int *len, MPI_Datatype *MPI_mainBlockInfo);
 
 double f(int, int);
 double identity(int, int);
