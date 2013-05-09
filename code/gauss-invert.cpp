@@ -1,6 +1,39 @@
 #include "tools.h"
 #include "io.h"
 #include <mpi.h>
+#include <stddef.h>
+
+typedef struct {
+    int label;
+    int min_k;
+    int rank;
+    double minnorm;
+} mainBlockInfo;
+
+void searchMainBlock(void *inv, void *inoutv, int *len, MPI_Datatype *MPI_mainBlockInfo){
+  mainBlockInfo *in = (mainBlockInfo *) inv;
+  mainBlockInfo *inout = (mainBlockInfo *) inoutv;
+  int i;
+  for (i=0; i<*len; ++i){
+    if(in->label){
+      if(inout->label){
+        if(in->minnorm<inout->minnorm){
+          inout->minnorm = in->minnorm;
+          inout->rank = in->rank;
+          inout->min_k = in->min_k;
+        }
+      }
+      else{
+        inout->minnorm = in->minnorm;
+        inout->rank = in->rank;
+        inout->min_k = in->min_k;
+      }
+    }
+      inout->label += in->label;
+     // in++; 
+     // inout++;
+  }
+}
 
 int gaussInvert(double *a, double *b, int matrix_side, int block_side, 
   int total_pr, int current_pr, 
@@ -23,8 +56,8 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
 	&current_pr_full_rows, &last_block_row_width,
 	&matrix_size_current_pr);
 
-  int i, j, k, min_j, min_k, min_k_global;
-  int label_main_local, label_main_global, res;
+  int i, j, k, min_j, min_k_global;
+  int res;
 
   int buf_size = 2 * block_string_size;
 
@@ -35,12 +68,34 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
    	int rank;
  	};
 
-	MPI_Double_Int in, out;
+  mainBlockInfo in, out;
+
+	//MPI_Double_Int in, out;
+
+  MPI_Op MPI_searchMainBlock;
+  MPI_Datatype MPI_mainBlockInfo;
+
+  MPI_Datatype type[4] = { MPI_INT, MPI_INT, MPI_INT, MPI_DOUBLE };
+
+  int blocklen[4] = { 1, 1, 1 };
+
+  MPI_Aint displ[4] = { 0, 0, 0, 0 };
+
+  displ[0] = offsetof(mainBlockInfo, label);
+  displ[1] = offsetof(mainBlockInfo, min_k);
+  displ[2] = offsetof(mainBlockInfo, rank);
+  displ[3] = offsetof(mainBlockInfo, minnorm);
+
+  MPI_Type_create_struct(4, blocklen, displ, type, &MPI_mainBlockInfo);
+
+  MPI_Type_commit(&MPI_mainBlockInfo);
+
+  MPI_Op_create(searchMainBlock, 1, &MPI_searchMainBlock);
 
  	in.rank = current_pr;
 	in.minnorm = 1000000000.;
-
- 	int min_block_coord[2] = {0, 0};
+  in.label = 0;
+  in.min_k = 0;
 
  	for (i=0; i<buf_size; i++){
   	buf_string[i] = 0.;
@@ -50,28 +105,32 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
 		first_row = (i+total_pr-1-current_pr)/total_pr;
 		first_row_proc_id = i%total_pr;
     min_j = 0;
-    min_k = 0;
     min_k_global = 0;
-   	min_block_coord[0] = 0;
-		min_block_coord[1] = 0;
-   	in.minnorm = 1e+10;
+
+   	in.minnorm = 0.;
    	in.rank = current_pr;
-   	label_main_local = 0;
-		label_main_global = 0;
+    in.label = 0;
+    in.min_k = i;
 		temp = 0.;
 	
 	  for (j=first_row; j<current_pr_full_rows; j++){
-      k=i;
    		for (k=i; k<total_full_block_rows; k++){
    	    res = simpleInvert(a + j*block_string_size + k*block_size, buf_1, buf_2, block_side);
         if (!res) {
    			  temp = matrixNorm(buf_1, block_side);
-            if ((temp<in.minnorm)||(!label_main_local)){
-              label_main_local = 1;
-     			    in.minnorm = temp;
-              min_j=j;
-              min_k=k;
+            if (in.label){
+              if (temp<in.minnorm){
+     			      in.minnorm = temp;
+                min_j=j;
+                in.min_k = k;
+              }
     		    }
+            else{
+              in.label = 1;
+              in.minnorm = temp;
+              min_j=j;
+              in.min_k = k;
+            }
         }
       }
     }
@@ -79,27 +138,23 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
 #ifdef WO_PIVOT_SEARCH_ATALL
 			if (current_pr==first_row_proc_id){
 				min_j=first_row;
-				in.minnorm = 0.;
-				min_k=i;
-				label_main_local=1;
+				in.minnorm = 1.;
+				in.min_k=i;
+				in.label=1;
 			}
 #endif
 
-			MPI_Allreduce(&label_main_local, &label_main_global, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-      //actually, I should write a new function. 3 synchronizations -> 1 synchronization; profit.
+      MPI_Allreduce(&in, &out, 1, MPI_mainBlockInfo, MPI_searchMainBlock, MPI_COMM_WORLD);
 
-			if (label_main_global==0){
+			if (out.label==0){
 				if (current_pr==0){
 				  printf("Main block not found!\n\t -- Step %d\n", i);
 				}
 				fflush(stdout);
-			
 				MPI_Barrier(MPI_COMM_WORLD);
 				return -1;
 			}
 
-			//printf("process %d\nminnorm %lf\n", current_pr, in.minnorm);
-    	MPI_Allreduce(&in, &out, 1, MPI_DOUBLE_INT, MPI_MINLOC, MPI_COMM_WORLD);
 #ifdef DEBUG_MODE
 			if (current_pr == first_row_proc_id){
         printf("**\nOUT RANK %d\n", out.rank);
@@ -107,14 +162,7 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
        	fflush(stdout);
       }
 #endif
-          if(current_pr==out.rank){
-       	    min_block_coord[0]=min_j;
-       	    min_block_coord[1]=min_k;
-          }
-
-       		MPI_Bcast(min_block_coord, 2, MPI_INT, out.rank, MPI_COMM_WORLD);
-
-       		min_k_global = min_block_coord[1];
+       		min_k_global = out.min_k;
 #ifdef W_FULL_PIVOT_SEARCH
        		for (j=0; j<max_block_rows_pp; j++){
 				    swapMatrix(a + j*block_string_size + i*block_size, a + j*block_string_size + min_k_global*block_size, block_size);
@@ -313,6 +361,8 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
 		printf("Exit from gauss\n");
 		fflush(stdout);
 	}
+   MPI_Type_free(&MPI_mainBlockInfo);
+   MPI_Op_free(&MPI_searchMainBlock);
     	return 0;
 }
 
