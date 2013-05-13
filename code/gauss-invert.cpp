@@ -92,7 +92,6 @@ int gaussInvert(double *a, double *b, int matrix_side, int block_side,
 			  printf("Main block not found!\n\t -- Step %d\n", i);
 			}
 			fflush(stdout);
-			MPI_Barrier(MPI_COMM_WORLD);
 			return -1;
 		}
 

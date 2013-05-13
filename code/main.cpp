@@ -153,7 +153,7 @@ int main(int argc, char *argv[]){
         
         makeBlockMatrix_Columns(a, matrix_side, block_side, total_pr, current_pr);
 
-        residual = MPI_getResidual(a, b, matrix_side, block_side, total_pr, current_pr, blocks_order, buf_string, buf_1, buf_2);
+        residual = MPI_getResidual_rewrite(a, b, matrix_side, block_side, total_pr, current_pr, blocks_order, buf_string, buf_1, buf_2);
         
         if(current_pr==0){
             printf("Residual: %.3le\n", residual);

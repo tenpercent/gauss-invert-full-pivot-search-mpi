@@ -13,6 +13,9 @@ double identity (int i, int j){
 void searchMainBlock(void *inv, void *inoutv, int *len, MPI_Datatype *MPI_mainBlockInfo){
   mainBlockInfo *in = (mainBlockInfo *) inv;
   mainBlockInfo *inout = (mainBlockInfo *) inoutv;
+  if (!MPI_mainBlockInfo){
+
+  }
   int i;
   for (i=0; i<*len; ++i){
     if(in->label){
@@ -234,6 +237,7 @@ double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side,
 	temp_block_for_multiplication = buf_2;
 
 	buf = new double[matrix_size_current_pr];
+	//buf = new double[block_string_size];
 	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	blocks_order = new int[total_block_rows];
 	for(i=0; i<total_block_rows;i++){
@@ -330,6 +334,7 @@ double MPI_getResidual(double *reinitialized, double *reversed, int matrix_side,
     MPI_Allreduce(&local_residual, &residual, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 	
 	delete[] buf;
+	delete[] blocks_order;
 	return residual;
 }
 

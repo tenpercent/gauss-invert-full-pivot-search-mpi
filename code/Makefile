@@ -1,7 +1,7 @@
 CXX = mpicxx
-ARGS = -O0 -lmpi -lm
-ARGS_FAST = -O3 -lmpi -lm -Wall
-FILES = main.cpp io.cpp tools.cpp gauss-invert.cpp multiplication.cpp simpleinvert.cpp
+ARGS = -O0 -lm
+ARGS_FAST = -O3 -lm -Wall
+FILES = main.cpp io.cpp tools.cpp gauss-invert.cpp multiplication.cpp simpleinvert.cpp residual.cpp
 
 all: release debug
 release:

@@ -30,6 +30,10 @@ double MPI_getResidual(double*, double*,
 	int, int, int, int, 
 	const int*,
 	double*, double*, double*);
+double MPI_getResidual_rewrite(double*, double*, 
+	int, int, int, int, 
+	const int*,
+	double*, double*, double*);
 int initParameters(int matrix_side, int block_side, int total_pr, int current_pr, 
 	int *total_block_rows, int *total_full_block_rows, 
 	int *block_size, int *block_string_size, 
